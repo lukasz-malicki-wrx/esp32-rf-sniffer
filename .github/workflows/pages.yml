@@ -43,7 +43,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           sed -i -E "s/^(    version: ).*/\1${version}/" rf-sniffer-web.yaml
           grep -n "version:" rf-sniffer-web.yaml
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/esphome
           key: >-

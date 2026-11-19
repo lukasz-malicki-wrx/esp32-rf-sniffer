@@ -97,7 +97,7 @@ jobs:
           # Enable every optional package, plus a package that uses every action and trigger.
           sed -E 's/^  # (dooya_blinds|home_assistant):/  \1:/' rf-sniffer.yaml > rf-sniffer-full.yaml
           echo "  ci_actions: !include tests/esphome/actions.yaml" >> rf-sniffer-full.yaml
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/esphome
           key: >-
