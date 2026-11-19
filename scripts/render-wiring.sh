@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Render docs/wiring.yml -> docs/images/wiring.{svg,png} + docs/wiring.bom.tsv.
+# Render the WireViz harness diagrams: docs/wiring-*.yml -> docs/images/wiring-*.svg
 #
 # WireViz and Graphviz run in a throwaway container: nothing to install locally, and the
 # output comes from the same pinned tool versions on every machine.
@@ -15,9 +15,9 @@ docker run --rm \
     apt-get update -qq >/dev/null
     apt-get install -y -qq --no-install-recommends graphviz >/dev/null 2>&1
     pip install -q --disable-pip-version-check --root-user-action=ignore wireviz==0.4.1
-    wireviz --format sp --output-dir docs/images docs/wiring.yml
-    wireviz --format t --output-dir docs docs/wiring.yml
-    chown -R "$OWNER" docs
+    for source in docs/wiring-*.yml; do
+      wireviz --format s --output-dir docs/images "$source" >/dev/null
+      echo "rendered docs/images/$(basename "$source" .yml).svg"
+    done
+    chown -R "$OWNER" docs/images
   '
-
-echo "Rendered docs/images/wiring.svg, docs/images/wiring.png and docs/wiring.bom.tsv"

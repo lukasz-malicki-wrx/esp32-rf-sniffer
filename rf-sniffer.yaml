@@ -1,4 +1,5 @@
 # ESP32 RF sniffer / bridge - two CC1101 radios (433 MHz + 868 MHz).
+# Reference hardware: Ebyte E07-M1101D-SMA (433) + Ebyte E07-900M10S (868).
 #
 # Standalone by design: decoding, logs and the transmit UI live on the device
 # (serial console + built-in web server). Home Assistant is optional, see packages/.
@@ -14,16 +15,16 @@ substitutions:
   spi_miso_pin: GPIO5
   spi_mosi_pin: GPIO22
 
-  # CC1101 #1 - 433 MHz
-  cc1101_433_cs_pin: GPIO19
-  cc1101_433_gdo0_pin: GPIO21  # TX data (module pin 3)
-  cc1101_433_gdo2_pin: GPIO23  # RX data (module pin 8)
+  # 433 MHz - Ebyte E07-M1101D-SMA
+  cc1101_433_cs_pin: GPIO19    # CSN  (module pin 4)
+  cc1101_433_gdo0_pin: GPIO21  # GDO0, TX data (module pin 3)
+  cc1101_433_gdo2_pin: GPIO23  # GDO2, RX data (module pin 8)
   cc1101_433_frequency: 433.92MHz
 
-  # CC1101 #2 - 868 MHz
-  cc1101_868_cs_pin: GPIO27
-  cc1101_868_gdo0_pin: GPIO26  # TX data (module pin 3)
-  cc1101_868_gdo2_pin: GPIO25  # RX data (module pin 8)
+  # 868 MHz - Ebyte E07-900M10S
+  cc1101_868_cs_pin: GPIO27    # CSN  (pad 19)
+  cc1101_868_gdo0_pin: GPIO26  # GDO0, TX data (pad 15)
+  cc1101_868_gdo2_pin: GPIO25  # GDO2, RX data (pad 14)
   cc1101_868_frequency: 868.35MHz
 
 esphome:

@@ -1,0 +1,42 @@
+# 433 MHz radio: ESP32 <-> Ebyte E07-M1101D-SMA.
+# Source of docs/images/wiring-433.svg - render with scripts/render-wiring.sh.
+#
+# ESP32 pins are listed in the module's pin order, so every wire runs straight.
+# GND, 3V3, SCK, MOSI and MISO are shared with the 868 MHz module (wiring-868.yml).
+
+options:
+  fontname: Helvetica
+  bgcolor: WH
+  color_mode: full
+
+connectors:
+  ESP32:
+    type: ESP32 DevKit
+    subtype: ESP32-WROOM-32
+    pins: [GND, 3V3, GPIO21, GPIO19, GPIO18, GPIO22, GPIO5, GPIO23]
+    pinlabels: [GND, 3.3 V, TX data, chip select, SPI SCK, SPI MOSI, SPI MISO, RX data]
+    show_pincount: false
+
+  433 MHz radio:
+    type: CC1101 module
+    subtype: 2.54 mm header
+    manufacturer: Ebyte
+    mpn: E07-M1101D-SMA
+    pinlabels: [GND, VCC, GDO0, CSN, SCK, MOSI, MISO, GDO2]
+    show_pincount: false
+    notes: "3.3 V · 10 µF + 100 nF at VCC · antenna: Ebyte JKD, SMA, screws onto the module"
+
+cables:
+  Dupont:
+    type: Dupont jumper wires, female-female
+    category: bundle
+    colors: [BK, RD, OG, WH, YE, BU, GN, VT]
+    length: 0.2
+    show_name: false
+    show_wirecount: false
+    show_wirenumbers: false
+
+connections:
+  - - ESP32: [GND, 3V3, GPIO21, GPIO19, GPIO18, GPIO22, GPIO5, GPIO23]
+    - Dupont: [1-8]
+    - 433 MHz radio: [1-8]

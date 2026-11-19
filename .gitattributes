@@ -1,4 +1,2 @@
-# Generated from docs/wiring.yml by scripts/render-wiring.sh
-docs/images/wiring.svg linguist-generated=true
-docs/images/wiring.png linguist-generated=true binary
-docs/wiring.bom.tsv linguist-generated=true
+# Generated from docs/wiring-*.yml by scripts/render-wiring.sh
+docs/images/wiring-*.svg linguist-generated=true

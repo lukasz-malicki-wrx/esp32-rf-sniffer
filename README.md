@@ -45,29 +45,34 @@ Example log (serial console or the web UI):
 
 ## Hardware
 
-| Part | Notes |
+Built and tested with:
+
+| Part | Model |
 |---|---|
-| ESP32 DevKit (ESP32-WROOM-32) | any classic ESP32 board |
-| CC1101 module, **433 MHz** version | 8-pin breakout, SPI |
-| CC1101 module, **868 MHz** version | matching network differs from the 433 MHz one |
-| 2 × quarter-wave antenna | ~17.3 cm (433 MHz), ~8.6 cm (868 MHz) |
-| 2 × (10 µF + 100 nF) | decoupling at each module |
+| MCU | ESP32 DevKit (ESP32-WROOM-32) |
+| 433 MHz radio | Ebyte **E07-M1101D-SMA** (CC1101, 8-pin header, SMA) + Ebyte JKD SMA antenna |
+| 868 MHz radio | Ebyte **E07-900M10S** (CC1101, SMD, IPEX) |
+| 868 MHz antenna | Ebyte **TX868-JKD-20** via an RG178 U.FL/IPEX1 to SMA pigtail |
+| Interconnect | Dupont jumper wires, female-female |
 
 ### Wiring
 
-![Wiring harness](docs/images/wiring.svg)
+| Signal | ESP32 | E07-M1101D-SMA (433) | E07-900M10S (868) |
+|---|---|---|---|
+| GND / VCC 3.3 V | GND / 3V3 | 1 / 2 | 1 / 9 |
+| SCK / MOSI / MISO | GPIO18 / GPIO22 / GPIO5 (shared) | 5 / 6 / 7 | 18 / 17 / 16 |
+| CSN | GPIO19 (433), GPIO27 (868) | 4 | 19 |
+| GDO0 - TX data | GPIO21 (433), GPIO26 (868) | 3 | 15 |
+| GDO2 - RX data | GPIO23 (433), GPIO25 (868) | 8 | 14 |
 
-| CC1101 | 433 MHz | 868 MHz |
-|---|---|---|
-| VCC / GND | 3V3 / GND | 3V3 / GND |
-| SCK / MOSI / MISO | GPIO18 / GPIO22 / GPIO5 | shared |
-| CSN | GPIO19 | GPIO27 |
-| GDO0 (TX) | GPIO21 | GPIO26 |
-| GDO2 (RX) | GPIO23 | GPIO25 |
+![ESP32 to E07-M1101D-SMA, 433 MHz](docs/images/wiring-433.svg)
 
-Pin numbers, hardware notes and the bill of materials: **[docs/wiring.md](docs/wiring.md)**.
-The harness diagram is generated with [WireViz](https://github.com/wireviz/WireViz) from
-[`docs/wiring.yml`](docs/wiring.yml) (`scripts/render-wiring.sh`).
+![ESP32 to E07-900M10S, 868 MHz](docs/images/wiring-868.svg)
+
+The two modules have different pinouts (8-pin breakout vs 22-pad SMD). Full pin table and
+hardware notes: **[docs/wiring.md](docs/wiring.md)**. The diagrams are generated with
+[WireViz](https://github.com/wireviz/WireViz) from `docs/wiring-*.yml`
+(`scripts/render-wiring.sh`).
 
 ## Architecture
 
@@ -199,7 +204,7 @@ CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push:
 | Job | What |
 |---|---|
 | Lint | `ruff`, `clang-format`, `yamllint` |
-| Wiring | renders `docs/wiring.yml` with WireViz, so a broken harness definition fails the build |
+| Wiring | renders `docs/wiring-*.yml` with WireViz, so a broken harness definition fails the build |
 | Unit tests | host build of the core with sanitizers |
 | Firmware | `esphome config` + `esphome compile` of the base config, and of a config with every optional package plus [`tests/esphome/actions.yaml`](tests/esphome/actions.yaml), which uses every action and trigger |
 
@@ -230,8 +235,9 @@ CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push:
 │   └── esphome/actions.yaml   #   CI package exercising every action and trigger
 ├── scripts/render-wiring.sh   # WireViz render in Docker
 └── docs/
-    ├── wiring.yml             # harness source (WireViz) -> images/wiring.svg, wiring.bom.tsv
-    ├── wiring.md              # pinout, hardware notes
+    ├── wiring-433.yml         # WireViz harness sources -> images/wiring-*.svg
+    ├── wiring-868.yml
+    ├── wiring.md              # hardware used, pinout, hardware notes
     └── architecture.md        # Mermaid diagrams: layers, RX/TX paths, radio state
 ```
 

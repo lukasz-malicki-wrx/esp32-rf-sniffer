@@ -1,0 +1,62 @@
+# 868 MHz radio: ESP32 <-> Ebyte E07-900M10S (SMD, 22 castellated pads).
+# Source of docs/images/wiring-868.svg - render with scripts/render-wiring.sh.
+#
+# Pad numbers are from the Ebyte E07-900M10S user manual. Only the used pads are drawn;
+# the module has more GND pads (1-5, 11, 12, 20, 22) and NC pads (6-8, 10, 13).
+# GND, 3V3, SCK, MOSI and MISO are shared with the 433 MHz module (wiring-433.yml).
+
+options:
+  fontname: Helvetica
+  bgcolor: WH
+  color_mode: full
+
+connectors:
+  ESP32:
+    type: ESP32 DevKit
+    subtype: ESP32-WROOM-32
+    pins: [GND, 3V3, GPIO26, GPIO27, GPIO18, GPIO22, GPIO5, GPIO25]
+    pinlabels: [GND, 3.3 V, TX data, chip select, SPI SCK, SPI MOSI, SPI MISO, RX data]
+    show_pincount: false
+
+  868 MHz radio:
+    type: CC1101 module
+    subtype: SMD, 22 pads
+    manufacturer: Ebyte
+    mpn: E07-900M10S
+    pins: [1, 9, 15, 19, 18, 17, 16, 14, IPEX]
+    pinlabels: [GND, VCC, GDO0, CSN, SCK, MOSI, MISO/GDO1, GDO2, antenna]
+    show_pincount: false
+    notes: 3.3 V · 10 µF + 100 nF at VCC
+
+  Antenna:
+    style: simple
+    type: Antenna 868 MHz
+    manufacturer: Ebyte
+    mpn: TX868-JKD-20
+
+cables:
+  Dupont:
+    type: Dupont jumper wires, female-female
+    category: bundle
+    colors: [BK, RD, OG, WH, YE, BU, GN, VT]
+    length: 0.2
+    show_name: false
+    show_wirecount: false
+    show_wirenumbers: false
+
+  Pigtail:
+    type: RG178 pigtail, IPEX1 - SMA
+    wirecount: 1
+    colors: [BK]
+    length: 0.15
+    show_name: false
+    show_wirecount: false
+
+connections:
+  - - ESP32: [GND, 3V3, GPIO26, GPIO27, GPIO18, GPIO22, GPIO5, GPIO25]
+    - Dupont: [1-8]
+    - 868 MHz radio: [1, 9, 15, 19, 18, 17, 16, 14]
+
+  - - 868 MHz radio: [IPEX]
+    - Pigtail: [1]
+    - Antenna

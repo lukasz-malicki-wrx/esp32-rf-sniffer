@@ -34,7 +34,7 @@ jobs:
         run: yamllint --strict .
 
   wiring:
-    name: Wiring diagram
+    name: Wiring diagrams
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,11 +46,14 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y graphviz
       - run: pip install wireviz -c requirements-dev.txt
       - name: Render
-        run: wireviz --format s --output-dir "$RUNNER_TEMP" docs/wiring.yml
+        run: |
+          for source in docs/wiring-*.yml; do
+            wireviz --format s --output-dir "$RUNNER_TEMP/wiring" "$source"
+          done
       - uses: actions/upload-artifact@v4
         with:
-          name: wiring-diagram
-          path: ${{ runner.temp }}/wiring.svg
+          name: wiring-diagrams
+          path: ${{ runner.temp }}/wiring/*.svg
 
   unit-tests:
     name: Unit tests (host, ASan + UBSan)
