@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <memory>
+
 #include "bounded_queue.h"
 
 using esphome::rf_bridge::BoundedQueue;
@@ -71,4 +73,29 @@ TEST(BoundedQueue, ClearEmptiesTheQueue) {
   q.clear();
   EXPECT_TRUE(q.empty());
   EXPECT_EQ(q.front(), nullptr);
+}
+
+TEST(BoundedQueue, EmptyQueueAccessorsAreSafe) {
+  BoundedQueue<int> q(2);
+  EXPECT_FALSE(q.pop().has_value());
+  EXPECT_EQ(q.front(), nullptr);
+  EXPECT_EQ(q.newest(0), nullptr);
+}
+
+TEST(BoundedQueue, SetCapacityZeroIsClampedToOne) {
+  BoundedQueue<int> q(4);
+  q.try_push(1);
+  q.try_push(2);
+  q.set_capacity(0);
+  EXPECT_EQ(q.capacity(), 1u);
+  EXPECT_EQ(q.pop(), 2);
+}
+
+TEST(BoundedQueue, MovesNonCopyableItems) {
+  BoundedQueue<std::unique_ptr<int>> q(2);
+  ASSERT_TRUE(q.try_push(std::make_unique<int>(7)));
+  q.push_overwrite(std::make_unique<int>(8));
+  auto first = q.pop();
+  ASSERT_TRUE(first.has_value());
+  EXPECT_EQ(**first, 7);
 }

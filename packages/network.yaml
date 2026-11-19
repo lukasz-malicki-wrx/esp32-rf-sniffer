@@ -1,0 +1,24 @@
+# Network for your own build: credentials from secrets.yaml.
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # Fallback hotspot when the configured network is unreachable.
+  ap:
+    ssid: ${friendly_name} Fallback
+    password: !secret ap_password
+
+captive_portal:
+
+ota:
+  - platform: esphome
+    # Noise-encrypted, authenticated uploads (cheaper and safer than an OTA password).
+    # The same key secures the optional Home Assistant API.
+    encryption:
+      key: !secret encryption_key
+
+web_server:
+  auth:
+    type: digest
+    username: !secret web_username
+    password: !secret web_password

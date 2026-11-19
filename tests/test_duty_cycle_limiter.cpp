@@ -69,3 +69,21 @@ TEST(DutyCycleLimiter, SurvivesMillisWrapAround) {
   EXPECT_FALSE(limiter.can_transmit(start + 2000, 1));  // wrapped, still inside the window
   EXPECT_TRUE(limiter.can_transmit(start + HOUR_MS + HOUR_MS / DutyCycleLimiter::BUCKETS, 1));
 }
+
+TEST(DutyCycleLimiter, RatioIsClampedToZeroToOne) {
+  DutyCycleLimiter negative(-0.5f, 10'000);
+  EXPECT_FALSE(negative.enabled());
+  DutyCycleLimiter above_one(2.0f, 10'000);
+  EXPECT_EQ(above_one.budget_us(), 10'000u * 1000u);  // 100 % of the window
+}
+
+TEST(DutyCycleLimiter, DisabledLimiterReportsZeroUsage) {
+  DutyCycleLimiter limiter;
+  limiter.record(0, 1'000'000);
+  EXPECT_EQ(limiter.used_percent(0), 0.0f);
+}
+
+TEST(DutyCycleLimiter, TinyWindowIsRaisedToOneMillisecondPerBucket) {
+  DutyCycleLimiter limiter(0.5f, 1);  // shorter than BUCKETS ms
+  EXPECT_EQ(limiter.budget_us(), DutyCycleLimiter::BUCKETS * 1000u / 2u);
+}

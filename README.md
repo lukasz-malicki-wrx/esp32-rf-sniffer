@@ -1,8 +1,15 @@
 # ESP32 RF Sniffer & Bridge
 
 [![CI](https://github.com/lukasz-malicki-wrx/esp32-rf-sniffer/actions/workflows/ci.yml/badge.svg)](https://github.com/lukasz-malicki-wrx/esp32-rf-sniffer/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://lukasz-malicki-wrx.github.io/esp32-rf-sniffer/coverage/badge.json)](https://lukasz-malicki-wrx.github.io/esp32-rf-sniffer/coverage/)
+[![Release](https://img.shields.io/github/v/release/lukasz-malicki-wrx/esp32-rf-sniffer)](https://github.com/lukasz-malicki-wrx/esp32-rf-sniffer/releases)
 [![ESPHome](https://img.shields.io/badge/ESPHome-2026.10-blue)](https://esphome.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+**[Install from your browser](https://lukasz-malicki-wrx.github.io/esp32-rf-sniffer/)** ·
+[Wiring](docs/wiring.md) ·
+[Architecture](docs/architecture.md) ·
+[How I reverse-engineered my blinds](docs/dooya-protocol.md)
 
 An ESP32 with two **CC1101** radios (433 MHz and 868 MHz) that listens to sub-GHz remotes,
 decodes them, keeps a history of what it heard and can **re-transmit any captured
@@ -96,6 +103,16 @@ ESPHome layer is a thin adapter. Details and sequence diagrams:
 
 ## Quick start
 
+### Option A - flash from the browser
+
+Open **[lukasz-malicki-wrx.github.io/esp32-rf-sniffer](https://lukasz-malicki-wrx.github.io/esp32-rf-sniffer/)** in Chrome or Edge, plug the ESP32 in
+over USB and press *Install firmware*. The installer then asks for your Wi-Fi and sends it
+to the device over USB - nothing is compiled in or stored online. The prebuilt image
+([`rf-sniffer-web.yaml`](rf-sniffer-web.yaml)) has the same radios and pipeline, but no
+web UI password, so treat it as a way to try the project.
+
+### Option B - build your own
+
 ```bash
 pip install -r requirements-dev.txt       # pinned ESPHome + linters
 cp secrets.example.yaml secrets.yaml      # Wi-Fi, keys, web UI login
@@ -116,6 +133,42 @@ packages:
   dooya_blinds: !include packages/dooya-blinds.yaml      # time-based covers for Dooya motors
   home_assistant: !include packages/home-assistant.yaml  # native API
 ```
+
+## Use `rf_bridge` in your own project
+
+The component is self-contained - any ESPHome config with a `remote_receiver` (and,
+optionally, a `remote_transmitter`) can pull it straight from GitHub:
+
+```yaml
+external_components:
+  - source: github://lukasz-malicki-wrx/esp32-rf-sniffer@v1.0.0
+    components: [rf_bridge]
+
+remote_receiver:
+  - id: rx
+    pin: GPIO23
+    dump: []
+
+remote_transmitter:
+  - id: tx
+    pin: GPIO21
+    carrier_duty_percent: 100%
+    non_blocking: false
+
+rf_bridge:
+  - id: bridge
+    receiver_id: rx
+    transmitter_id: tx
+
+button:
+  - platform: rf_bridge
+    rf_bridge_id: bridge
+    transmit_last:
+      name: Replay last frame
+```
+
+It works with any OOK receiver/transmitter pair (CC1101, SRX882/STX882, RXB6...), not only
+the two-radio board from this repository. Requires ESPHome 2026.10 or newer.
 
 ## Configuration
 
@@ -196,6 +249,7 @@ cmake -S tests -B build -G Ninja && cmake --build build && ctest --test-dir buil
 ```
 
 GoogleTest, built with `-Wall -Wextra -Wconversion -Werror` and AddressSanitizer + UBSan.
+Line coverage of the core is published with every push: **[coverage report](https://lukasz-malicki-wrx.github.io/esp32-rf-sniffer/coverage/)**.
 The suite covers the queue policies, de-duplication (including `millis()` wrap-around),
 the duty-cycle window, frame fingerprints and the scheduler's ordering guarantees.
 
@@ -206,15 +260,19 @@ CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push:
 | Lint | `ruff`, `clang-format`, `yamllint` |
 | Wiring | renders `docs/wiring-*.yml` with WireViz, so a broken harness definition fails the build |
 | Unit tests | host build of the core with sanitizers |
+| Pages & release | builds the prebuilt image and the coverage report, deploys the installer page; on a release, attaches the image |
 | Firmware | `esphome config` + `esphome compile` of the base config, and of a config with every optional package plus [`tests/esphome/actions.yaml`](tests/esphome/actions.yaml), which uses every action and trigger |
 
 ## Project structure
 
 ```text
 .
-├── rf-sniffer.yaml            # device config: pins + packages
+├── rf-sniffer.yaml            # your build: pins + packages, credentials from secrets.yaml
+├── rf-sniffer-web.yaml        # prebuilt image for the browser installer (no secrets)
 ├── packages/
-│   ├── device.yaml            # Wi-Fi, OTA, logger, web UI, diagnostics
+│   ├── base.yaml              # logger, web UI, SPI, diagnostics
+│   ├── network.yaml           # Wi-Fi + encrypted OTA from secrets.yaml
+│   ├── network-provisioned.yaml  # Wi-Fi via Improv, API key provisioned on adoption
 │   ├── radio-433.yaml         # CC1101 #1 + receiver/transmitter + bridge + entities
 │   ├── radio-868.yaml         # CC1101 #2, same pipeline, 1 % duty cycle
 │   ├── dooya-blinds.yaml      # optional: Dooya covers synced with physical remotes
@@ -233,12 +291,16 @@ CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push:
 │   └── duty_cycle_limiter.h   # core
 ├── tests/                     # GoogleTest suite for the core
 │   └── esphome/actions.yaml   #   CI package exercising every action and trigger
-├── scripts/render-wiring.sh   # WireViz render in Docker
+├── site/index.html            # browser installer (ESP Web Tools), published to Pages
+├── scripts/
+│   ├── render-wiring.sh       # WireViz render in Docker
+│   └── plot_dooya_frame.py    # Dooya timing diagram
 └── docs/
     ├── wiring-433.yml         # WireViz harness sources -> images/wiring-*.svg
     ├── wiring-868.yml
     ├── wiring.md              # hardware used, pinout, hardware notes
-    └── architecture.md        # Mermaid diagrams: layers, RX/TX paths, radio state
+    ├── architecture.md        # Mermaid diagrams: layers, RX/TX paths, radio state
+    └── dooya-protocol.md      # reverse-engineering write-up
 ```
 
 ## Limitations

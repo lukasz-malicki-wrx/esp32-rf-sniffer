@@ -26,8 +26,8 @@ jobs:
       - run: pip install ruff yamllint clang-format -c requirements-dev.txt
       - name: ruff
         run: |
-          ruff check components
-          ruff format --check components
+          ruff check components scripts
+          ruff format --check components scripts
       - name: clang-format
         run: clang-format --dry-run --Werror components/rf_bridge/*.h components/rf_bridge/*.cpp tests/*.cpp
       - name: yamllint
@@ -74,7 +74,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [base, full]
+        include:
+          - variant: base  # rf-sniffer.yaml as shipped
+            config: rf-sniffer.yaml
+          - variant: full  # every optional package + every action and trigger
+            config: rf-sniffer-full.yaml
+          - variant: web  # prebuilt image for the browser installer
+            config: rf-sniffer-web.yaml
+          - variant: minimal  # README "use in your own project" example
+            config: tests/esphome/minimal.yaml
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -86,23 +94,17 @@ jobs:
       - name: Prepare config
         run: |
           cp secrets.example.yaml secrets.yaml
-          if [ "${{ matrix.variant }}" = "full" ]; then
-            # Enable every optional package so all of them are compiled.
-            sed -E 's/^  # (dooya_blinds|home_assistant):/  \1:/' rf-sniffer.yaml > rf-sniffer-full.yaml
-            # ...plus a package that uses every rf_bridge action and trigger.
-            echo "  ci_actions: !include tests/esphome/actions.yaml" >> rf-sniffer-full.yaml
-            echo "CONFIG=rf-sniffer-full.yaml" >> "$GITHUB_ENV"
-          else
-            echo "CONFIG=rf-sniffer.yaml" >> "$GITHUB_ENV"
-          fi
+          # Enable every optional package, plus a package that uses every action and trigger.
+          sed -E 's/^  # (dooya_blinds|home_assistant):/  \1:/' rf-sniffer.yaml > rf-sniffer-full.yaml
+          echo "  ci_actions: !include tests/esphome/actions.yaml" >> rf-sniffer-full.yaml
       - uses: actions/cache@v4
         with:
           path: ~/.cache/esphome
           key: >-
             esphome-${{ hashFiles('requirements-dev.txt') }}-${{ matrix.variant }}-
-            ${{ hashFiles('rf-sniffer.yaml', 'packages/**', 'components/**') }}
-          restore-keys: esphome-${{ hashFiles('requirements-dev.txt') }}-
+            ${{ hashFiles('*.yaml', 'packages/**', 'components/**') }}
+          restore-keys: esphome-${{ hashFiles('requirements-dev.txt') }}-${{ matrix.variant }}-
       - name: Validate
-        run: esphome config "$CONFIG"
+        run: esphome config ${{ matrix.config }}
       - name: Compile
-        run: esphome compile "$CONFIG"
+        run: esphome compile ${{ matrix.config }}

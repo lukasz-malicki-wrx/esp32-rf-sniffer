@@ -42,7 +42,8 @@ external_components:
     components: [rf_bridge]
 
 packages:
-  device: !include packages/device.yaml
+  base: !include packages/base.yaml
+  network: !include packages/network.yaml
   radio_433: !include packages/radio-433.yaml
   radio_868: !include packages/radio-868.yaml
 

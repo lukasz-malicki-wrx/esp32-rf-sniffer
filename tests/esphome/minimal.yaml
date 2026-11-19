@@ -1,0 +1,36 @@
+# CI-only: the "Use rf_bridge in your own project" example from the README, compiled
+# against the local component so the documented snippet cannot silently rot.
+
+esphome:
+  name: rf-bridge-minimal
+
+esp32:
+  board: esp32dev
+
+external_components:
+  - source:
+      type: local
+      path: ../../components
+    components: [rf_bridge]
+
+remote_receiver:
+  - id: rx
+    pin: GPIO23
+    dump: []
+
+remote_transmitter:
+  - id: tx
+    pin: GPIO21
+    carrier_duty_percent: 100%
+    non_blocking: false
+
+rf_bridge:
+  - id: bridge
+    receiver_id: rx
+    transmitter_id: tx
+
+button:
+  - platform: rf_bridge
+    rf_bridge_id: bridge
+    transmit_last:
+      name: Replay last frame

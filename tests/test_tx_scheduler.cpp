@@ -124,3 +124,24 @@ TEST(TxScheduler, AirtimeIncludesRepeats) {
   j.send_wait_us = 8000;
   EXPECT_EQ(j.airtime_us(), 6u * 2000u + 5u * 8000u);
 }
+
+TEST(TxScheduler, NamesEveryEnqueueResult) {
+  using esphome::rf_bridge::enqueue_result_name;
+  EXPECT_STREQ(enqueue_result_name(EnqueueResult::QUEUED), "queued");
+  EXPECT_STREQ(enqueue_result_name(EnqueueResult::QUEUE_FULL), "queue full");
+  EXPECT_STREQ(enqueue_result_name(EnqueueResult::EXCEEDS_BUDGET), "longer than the duty-cycle budget");
+  EXPECT_STREQ(enqueue_result_name(EnqueueResult::EMPTY), "empty frame");
+}
+
+TEST(TxScheduler, ReportsDutyCycleUsage) {
+  auto s = scheduler(4, 0);
+  EXPECT_FALSE(s.duty_cycle_enabled());
+  s.set_duty_cycle(0.01f, 100'000);  // 1 s budget
+  EXPECT_TRUE(s.duty_cycle_enabled());
+  auto j = s.enqueue(job("half", 250'000));  // 500 ms
+  ASSERT_EQ(j, EnqueueResult::QUEUED);
+  auto sent = s.next(0);
+  ASSERT_TRUE(sent);
+  s.mark_sent(0, sent->airtime_us());
+  EXPECT_NEAR(s.duty_cycle_used_percent(10), 50.0f, 0.01f);
+}

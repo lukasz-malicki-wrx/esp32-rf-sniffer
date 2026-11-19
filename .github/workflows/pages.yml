@@ -1,0 +1,157 @@
+name: Pages & release
+
+# Builds the prebuilt firmware (rf-sniffer-web.yaml) and the coverage report, then
+# publishes both on GitHub Pages together with the browser installer (site/).
+# On a published release the firmware image is also attached to the release.
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  firmware:
+    name: Prebuilt firmware
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install esphome -c requirements-dev.txt
+      - name: Version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            version="${{ github.event.release.tag_name }}"
+          else
+            version="main-${GITHUB_SHA::7}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          sed -i -E "s/^(    version: ).*/\1${version}/" rf-sniffer-web.yaml
+          grep -n "version:" rf-sniffer-web.yaml
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/esphome
+          key: >-
+            esphome-web-${{ hashFiles('requirements-dev.txt') }}-
+            ${{ hashFiles('rf-sniffer-web.yaml', 'packages/**', 'components/**') }}
+          restore-keys: esphome-web-${{ hashFiles('requirements-dev.txt') }}-
+      - name: Compile
+        run: esphome compile rf-sniffer-web.yaml
+      - name: Collect image
+        run: |
+          image=$(find .esphome -name firmware.factory.bin -path '*rf-sniffer*' | head -n 1)
+          test -n "$image" || { echo "factory image not found"; exit 1; }
+          mkdir -p out
+          cp "$image" out/rf-sniffer-${{ steps.version.outputs.version }}.factory.bin
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: out/
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - run: pip install gcovr==8.2
+      - name: Build & test (instrumented)
+        run: |
+          cmake -S tests -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+            -DRF_BRIDGE_SANITIZE=OFF -DRF_BRIDGE_COVERAGE=ON
+          cmake --build build
+          ctest --test-dir build --output-on-failure
+      - name: Report
+        run: |
+          mkdir -p out
+          gcovr --root . --filter components/rf_bridge/ \
+            --exclude-throw-branches --exclude-unreachable-branches \
+            --html-details out/index.html --json-summary out/summary.json \
+            --print-summary build | tee summary.txt
+          python3 - <<'EOF'
+          import json
+          pct = json.load(open("out/summary.json"))["line_percent"]
+          color = "brightgreen" if pct >= 90 else "green" if pct >= 80 else "yellow"
+          badge = {"schemaVersion": 1, "label": "coverage", "message": f"{pct:.0f}%", "color": color}
+          json.dump(badge, open("out/badge.json", "w"))
+          print(badge)
+          EOF
+          cat summary.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: out/
+
+  publish:
+    name: Publish
+    needs: [firmware, coverage]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # attach the image to the release
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: firmware
+          path: firmware
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage
+          path: coverage
+      - name: Assemble site
+        env:
+          VERSION: ${{ needs.firmware.outputs.version }}
+        run: |
+          mkdir -p _site/firmware _site/images
+          cp site/index.html _site/
+          cp docs/images/*.svg _site/images/
+          cp -r coverage _site/coverage
+          image="rf-sniffer-${VERSION}.factory.bin"
+          cp "firmware/$image" _site/firmware/
+          cat > _site/manifest.json <<EOF
+          {
+            "name": "ESP32 RF Sniffer",
+            "version": "${VERSION}",
+            "home_assistant_domain": "esphome",
+            "new_install_prompt_erase": true,
+            "builds": [
+              { "chipFamily": "ESP32", "parts": [{ "path": "firmware/${image}", "offset": 0 }] }
+            ]
+          }
+          EOF
+          find _site -type f | sort
+      - name: Attach image to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" firmware/*.factory.bin --clobber
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4

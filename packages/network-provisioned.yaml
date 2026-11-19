@@ -1,0 +1,20 @@
+# Network for the prebuilt image (web installer): no credentials are compiled in.
+#
+# - Wi-Fi is set up over USB right after flashing: the web installer asks for it
+#   (Improv Serial). No open hotspot is ever started.
+# - The API encryption key is provisioned when the device is adopted (Home Assistant or
+#   the ESPHome dashboard) and from then on also authenticates OTA updates.
+# - Provisioning is only accepted for 15 minutes after boot; power-cycle to reopen.
+
+wifi: {}
+
+improv_serial:
+
+api:
+  encryption: {}
+
+ota:
+  - platform: esphome
+
+provisioning:
+  timeout: 15min

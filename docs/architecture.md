@@ -5,7 +5,7 @@
 ```mermaid
 flowchart TB
     subgraph YAML["Configuration (YAML packages)"]
-        DEV["device.yaml<br/>Wi-Fi · OTA · logger · web UI"]
+        DEV["base.yaml + network.yaml<br/>logger · web UI · Wi-Fi · OTA"]
         R433["radio-433.yaml"]
         R868["radio-868.yaml"]
         BLINDS["dooya-blinds.yaml<br/>(optional)"]

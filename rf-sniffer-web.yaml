@@ -1,0 +1,50 @@
+# Prebuilt image for the browser installer (https://lukasz-malicki-wrx.github.io/esp32-rf-sniffer/).
+#
+# Same radios and RF pipeline as rf-sniffer.yaml, but no secrets: Wi-Fi and the API key
+# are provisioned after flashing (packages/network-provisioned.yaml). The web UI has no
+# password in this image - for a permanent install, build rf-sniffer.yaml with your own
+# secrets.yaml.
+
+substitutions:
+  name: rf-sniffer
+  friendly_name: RF Sniffer
+  spi_clk_pin: GPIO18
+  spi_miso_pin: GPIO5
+  spi_mosi_pin: GPIO22
+  cc1101_433_cs_pin: GPIO19
+  cc1101_433_gdo0_pin: GPIO21
+  cc1101_433_gdo2_pin: GPIO23
+  cc1101_433_frequency: 433.92MHz
+  cc1101_868_cs_pin: GPIO27
+  cc1101_868_gdo0_pin: GPIO26
+  cc1101_868_gdo2_pin: GPIO25
+  cc1101_868_frequency: 868.35MHz
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  name_add_mac_suffix: true  # several devices on one network get unique hostnames
+  min_version: 2026.10.0
+  project:
+    name: lukasz-malicki-wrx.esp32-rf-sniffer
+    version: dev  # replaced with the release tag by the release workflow
+
+esp32:
+  board: esp32dev
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [rf_bridge]
+
+# Lets the ESPHome dashboard adopt the device and turn it into an editable config.
+dashboard_import:
+  package_import_url: github://lukasz-malicki-wrx/esp32-rf-sniffer/rf-sniffer-web.yaml@main
+  import_full_config: true
+
+packages:
+  base: !include packages/base.yaml
+  network: !include packages/network-provisioned.yaml
+  radio_433: !include packages/radio-433.yaml
+  radio_868: !include packages/radio-868.yaml

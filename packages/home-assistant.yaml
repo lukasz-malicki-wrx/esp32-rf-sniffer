@@ -6,4 +6,4 @@
 
 api:
   encryption:
-    key: !secret encryption_key  # shared with OTA (packages/device.yaml)
+    key: !secret encryption_key  # shared with OTA (packages/network.yaml)

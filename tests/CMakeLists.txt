@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(RF_BRIDGE_SANITIZE "Build tests with AddressSanitizer + UBSan" ON)
+option(RF_BRIDGE_COVERAGE "Instrument the core for line/branch coverage (gcov format)" OFF)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -37,6 +38,11 @@ target_link_libraries(rf_bridge_tests PRIVATE GTest::gtest_main)
 if(RF_BRIDGE_SANITIZE)
   target_compile_options(rf_bridge_tests PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all)
   target_link_options(rf_bridge_tests PRIVATE -fsanitize=address,undefined)
+endif()
+
+if(RF_BRIDGE_COVERAGE)
+  target_compile_options(rf_bridge_tests PRIVATE --coverage -O0 -fno-inline)
+  target_link_options(rf_bridge_tests PRIVATE --coverage)
 endif()
 
 enable_testing()

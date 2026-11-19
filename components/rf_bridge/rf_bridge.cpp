@@ -57,8 +57,9 @@ void RfBridge::dump_config() {
                 this->band_, static_cast<unsigned>(this->scheduler_.capacity()),
                 static_cast<unsigned>(this->history_.capacity()), this->dedup_.window_ms(), YESNO(this->capture_raw_),
                 static_cast<unsigned>(this->raw_min_pulses_), YESNO(this->scheduler_.duty_cycle_enabled()));
-  if (this->transmitter_ == nullptr)
+  if (this->transmitter_ == nullptr) {
     ESP_LOGCONFIG(TAG, "  Receive only (no transmitter)");
+  }
 }
 
 void RfBridge::loop() { this->transmit_next_(); }

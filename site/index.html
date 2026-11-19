@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP32 RF Sniffer</title>
+  <meta name="description" content="Flash the ESP32 RF Sniffer & Bridge firmware from your browser: two CC1101 radios, 433 + 868 MHz, capture and replay.">
+  <script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
+  <style>
+    :root {
+      --bg: #f7f7f5; --surface: #ffffff; --text: #1d1d1f; --muted: #5f6368;
+      --border: #e2e2de; --accent: #1a73e8; --accent-text: #ffffff; --code: #f0f0ec;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121214; --surface: #1c1c1f; --text: #ececec; --muted: #a0a0a6;
+        --border: #2e2e33; --accent: #8ab4f8; --accent-text: #0b1b33; --code: #26262b;
+        color-scheme: dark;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    main { max-width: 760px; margin: 0 auto; padding: 48px 16px 64px; }
+    h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 8px; }
+    h2 { font-size: 1.15rem; margin: 40px 0 12px; }
+    p.lead { color: var(--muted); font-size: 1.1rem; margin: 0 0 28px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 24px; margin: 0 0 16px;
+    }
+    .install { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+    .meta { color: var(--muted); font-size: .9rem; }
+    esp-web-install-button button[slot="activate"] {
+      background: var(--accent); color: var(--accent-text); border: 0; border-radius: 8px;
+      padding: 12px 22px; font: 600 1rem system-ui, sans-serif; cursor: pointer;
+    }
+    ol, ul { padding-left: 22px; margin: 0; }
+    li { margin: 6px 0; }
+    code { background: var(--code); border-radius: 4px; padding: 1px 6px; font-size: .9em; }
+    a { color: var(--accent); }
+    img { max-width: 100%; height: auto; border-radius: 8px; background: #fff; }
+    .links { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>ESP32 RF Sniffer &amp; Bridge</h1>
+  <p class="lead">Two CC1101 radios (433 + 868 MHz) on one ESP32: decode remotes, keep a
+    history of what was heard and replay it through a serialised transmit queue.</p>
+
+  <div class="card">
+    <div class="install">
+      <esp-web-install-button manifest="manifest.json">
+        <button slot="activate">Install firmware</button>
+        <span slot="unsupported">Your browser cannot flash devices - use Chrome or Edge on a desktop.</span>
+        <span slot="not-allowed">Flashing needs a secure (https) page.</span>
+      </esp-web-install-button>
+      <span class="meta">Version <span id="version">…</span> · ESP32 (classic)</span>
+    </div>
+  </div>
+
+  <h2>How it works</h2>
+  <ol>
+    <li>Wire the ESP32 to the radios as in the <a href="https://github.com/lukasz-malicki-wrx/esp32-rf-sniffer/blob/main/docs/wiring.md">wiring guide</a>.</li>
+    <li>Connect the ESP32 over USB and press <strong>Install firmware</strong> (Chrome or Edge, desktop).</li>
+    <li>When asked, enter your Wi-Fi - it is sent to the device over USB, nothing is stored online.</li>
+    <li>Open the device's address in a browser: captures, replay buttons and the live log are there.</li>
+  </ol>
+
+  <h2>Good to know</h2>
+  <ul>
+    <li>This image has <strong>no web UI password</strong> - it is meant for trying the project on a trusted network.
+      For a permanent install build <code>rf-sniffer.yaml</code> with your own <code>secrets.yaml</code>.</li>
+    <li>Home Assistant / the ESPHome dashboard can adopt the device; the API key is set during adoption,
+      within 15 minutes of power-up.</li>
+    <li>No driver? CP210x or CH340 USB-serial drivers are needed on some systems.</li>
+  </ul>
+
+  <h2>Wiring</h2>
+  <img src="images/wiring-433.svg" alt="ESP32 to Ebyte E07-M1101D-SMA, 433 MHz">
+  <p></p>
+  <img src="images/wiring-868.svg" alt="ESP32 to Ebyte E07-900M10S, 868 MHz">
+
+  <h2>Links</h2>
+  <div class="links">
+    <a href="https://github.com/lukasz-malicki-wrx/esp32-rf-sniffer">Source code</a>
+    <a href="https://github.com/lukasz-malicki-wrx/esp32-rf-sniffer/blob/main/docs/architecture.md">Architecture</a>
+    <a href="https://github.com/lukasz-malicki-wrx/esp32-rf-sniffer/blob/main/docs/dooya-protocol.md">Dooya protocol write-up</a>
+    <a href="coverage/">Test coverage report</a>
+    <a href="https://github.com/lukasz-malicki-wrx/esp32-rf-sniffer/releases">Releases</a>
+  </div>
+</main>
+<script>
+  fetch("manifest.json")
+    .then((r) => r.json())
+    .then((m) => { document.getElementById("version").textContent = m.version; })
+    .catch(() => { document.getElementById("version").textContent = "unknown"; });
+</script>
+</body>
+</html>
