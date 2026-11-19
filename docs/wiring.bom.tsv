@@ -1,0 +1,12 @@
+Id	Description	Qty	Unit	Designators
+1	Connector, CC1101 module, 433 MHz version, 8 pins	1		CC1101_433
+2	Connector, CC1101 module, 868 MHz version, 8 pins	1		CC1101_868
+3	Connector, ESP32 DevKit, header pins, 11 pins	1		ESP32
+4	Wire, 0.14 mm², BK	0.3	m	W433, W868
+5	Wire, 0.14 mm², BU	0.3	m	W433, W868
+6	Wire, 0.14 mm², GN	0.3	m	W433, W868
+7	Wire, 0.14 mm², OG	0.3	m	W433, W868
+8	Wire, 0.14 mm², RD	0.3	m	W433, W868
+9	Wire, 0.14 mm², VT	0.3	m	W433, W868
+10	Wire, 0.14 mm², WH	0.3	m	W433, W868
+11	Wire, 0.14 mm², YE	0.3	m	W433, W868

@@ -1,0 +1,12 @@
+# Same style as ESPHome core, so the component reads like an upstream one.
+BasedOnStyle: Google
+ColumnLimit: 120
+AccessModifierOffset: -1
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+DerivePointerAlignment: false
+PointerAlignment: Right
+IncludeBlocks: Preserve
+SortIncludes: false
+SpaceAfterTemplateKeyword: false

@@ -1,0 +1,38 @@
+# One Dooya blind, included from dooya-blinds.yaml with `vars`:
+#   key            - cover id suffix (cover id: blind_<key>)
+#   name           - entity name
+#   channel        - channel of `dooya_remote_id` the motor is paired with
+#   open_duration  - full travel bottom -> top (stopwatch it)
+#   close_duration - full travel top -> bottom
+#
+# Dooya motors do not report their position, so it is estimated from travel time.
+
+cover:
+  - platform: time_based
+    id: blind_${key}
+    name: ${name}
+    device_class: shutter
+    assumed_state: true
+    # The motor stops at its end positions by itself: at 0 % / 100 % the ESP sends no STOP,
+    # so a slightly wrong duration never leaves the blind half-way.
+    has_built_in_endstop: true
+    open_duration: ${open_duration}
+    close_duration: ${close_duration}
+    open_action:
+      - if:
+          condition:
+            lambda: return !id(dooya_rf_sync);
+          then:
+            - rf_bridge.transmit_dooya: {id: bridge_433, remote_id: "${dooya_remote_id}", channel: "${channel}", button: 1}
+    close_action:
+      - if:
+          condition:
+            lambda: return !id(dooya_rf_sync);
+          then:
+            - rf_bridge.transmit_dooya: {id: bridge_433, remote_id: "${dooya_remote_id}", channel: "${channel}", button: 3}
+    stop_action:
+      - if:
+          condition:
+            lambda: return !id(dooya_rf_sync);
+          then:
+            - rf_bridge.transmit_dooya: {id: bridge_433, remote_id: "${dooya_remote_id}", channel: "${channel}", button: 5}

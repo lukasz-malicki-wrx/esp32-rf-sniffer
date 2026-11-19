@@ -1,0 +1,88 @@
+# CC1101 #2 on 868 MHz (OOK). Same pipeline as 433 MHz, separate radio and queue.
+#
+# Note: remote_receiver works on demodulated pulses, i.e. OOK/ASK protocols. FSK-based
+# 868 MHz systems (wM-Bus meters, HomeMatic, FS20) need the CC1101 packet mode instead.
+
+esphome:
+  on_boot:
+    - priority: -100
+      then:
+        - cc1101.begin_rx: cc1101_868
+
+cc1101:
+  - id: cc1101_868
+    cs_pin: ${cc1101_868_cs_pin}
+    frequency: ${cc1101_868_frequency}
+    modulation_type: ASK/OOK
+    filter_bandwidth: 200kHz
+
+remote_receiver:
+  - id: rx_868
+    pin: ${cc1101_868_gdo2_pin}
+    tolerance: 50%
+    filter: 100us
+    idle: 8ms
+    buffer_size: 8kB
+    rmt_symbols: 192
+    dump: []
+
+remote_transmitter:
+  - id: tx_868
+    pin: ${cc1101_868_gdo0_pin}
+    carrier_duty_percent: 100%
+    rmt_symbols: 64
+    non_blocking: false
+    on_transmit:
+      then:
+        - cc1101.begin_tx: cc1101_868
+    on_complete:
+      then:
+        - cc1101.begin_rx: cc1101_868
+
+rf_bridge:
+  - id: bridge_868
+    band: "868"
+    receiver_id: rx_868
+    transmitter_id: tx_868
+    queue_size: 20
+    frame_gap: 100ms
+    dedup_window: 1500ms
+    history_size: 8
+    # ETSI EN 300 220, sub-band 868.0-868.6 MHz: 1 % duty cycle (36 s per hour).
+    duty_cycle:
+      limit: 1%
+      window: 1h
+
+select:
+  - platform: rf_bridge
+    rf_bridge_id: bridge_868
+    capture_slot:
+      name: 868 capture slot
+
+text_sensor:
+  - platform: rf_bridge
+    rf_bridge_id: bridge_868
+    last_frame:
+      name: 868 last frame
+    selected_capture:
+      name: 868 selected capture
+
+button:
+  - platform: rf_bridge
+    rf_bridge_id: bridge_868
+    transmit_selected:
+      name: 868 transmit selected
+    transmit_last:
+      name: 868 transmit last
+    clear_captures:
+      name: 868 clear captures
+
+sensor:
+  - platform: rf_bridge
+    rf_bridge_id: bridge_868
+    queue_depth:
+      name: 868 TX queue
+    frames_received:
+      name: 868 frames received
+    duty_cycle_used:
+      name: 868 duty cycle used

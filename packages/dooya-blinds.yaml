@@ -1,0 +1,100 @@
+# Dooya roller blinds on 433 MHz: control from the ESP + state tracking from physical remotes.
+#
+# Transmit: the ESP impersonates a multi-channel Dooya remote (`dooya_remote_id`). Motors
+#           paired with that remote accept it without re-pairing. Commands go through
+#           rf_bridge, so "close all blinds" from a scene is queued and sent one by one.
+# Receive:  rf_bridge reports every (de-duplicated) Dooya press. `dooya_sync` maps it to the
+#           blind it addresses and updates the cover state *without* transmitting - the
+#           motor already got the command from the remote.
+#
+# The remote id is effectively the key to the blinds - keep it in secrets.yaml.
+
+substitutions:
+  dooya_remote_id: !secret dooya_remote_id
+  dooya_channel_all: "0x20"
+
+globals:
+  # True only while dooya_sync updates covers: their actions see it and skip transmitting.
+  - id: dooya_rf_sync
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+packages:
+  blind_living_room: !include
+    file: dooya-blind.yaml
+    vars: {key: living_room, name: Living room blind, channel: "0x21", open_duration: 30s, close_duration: 27s}
+  blind_kitchen: !include
+    file: dooya-blind.yaml
+    vars: {key: kitchen, name: Kitchen blind, channel: "0x22", open_duration: 20600ms, close_duration: 20s}
+  blind_bedroom: !include
+    file: dooya-blind.yaml
+    vars: {key: bedroom, name: Bedroom blind, channel: "0x23", open_duration: 30s, close_duration: 27s}
+
+script:
+  - id: dooya_sync
+    mode: parallel
+    parameters:
+      channel: int
+      button: int
+    then:
+      - lambda: |-
+          struct Route {
+            uint8_t channel;
+            esphome::cover::Cover *cover;
+          };
+          const Route routes[] = {
+              {0x21, id(blind_living_room)},
+              {0x22, id(blind_kitchen)},
+              {0x23, id(blind_bedroom)},
+          };
+          const bool all = channel == ${dooya_channel_all};
+
+          id(dooya_rf_sync) = true;
+          for (const auto &route : routes) {
+            if (!all && route.channel != channel)
+              continue;
+            auto call = route.cover->make_call();
+            if (button == esphome::rf_bridge::DooyaCode::BUTTON_UP)
+              call.set_command_open();
+            else if (button == esphome::rf_bridge::DooyaCode::BUTTON_DOWN)
+              call.set_command_close();
+            else if (button == esphome::rf_bridge::DooyaCode::BUTTON_STOP)
+              call.set_command_stop();
+            else
+              continue;
+            call.perform();
+            ESP_LOGI("dooya", "Remote ch 0x%02X -> %s", channel, route.cover->get_name().c_str());
+          }
+          id(dooya_rf_sync) = false;
+
+rf_bridge:
+  - id: !extend bridge_433
+    on_dooya:
+      - if:
+          condition:
+            lambda: return x.id == ${dooya_remote_id};
+          then:
+            - script.execute:
+                id: dooya_sync
+                channel: !lambda return x.channel;
+                button: !lambda return x.button;
+
+cover:
+  # The "all" channel moves every blind with a single burst; mirror that in the states.
+  - platform: template
+    id: blinds_all
+    name: All blinds
+    device_class: shutter
+    assumed_state: true
+    optimistic: true
+    restore_mode: NO_RESTORE
+    open_action:
+      - rf_bridge.transmit_dooya: {id: bridge_433, remote_id: "${dooya_remote_id}", channel: "${dooya_channel_all}", button: 1}
+      - script.execute: {id: dooya_sync, channel: "${dooya_channel_all}", button: 1}
+    close_action:
+      - rf_bridge.transmit_dooya: {id: bridge_433, remote_id: "${dooya_remote_id}", channel: "${dooya_channel_all}", button: 3}
+      - script.execute: {id: dooya_sync, channel: "${dooya_channel_all}", button: 3}
+    stop_action:
+      - rf_bridge.transmit_dooya: {id: bridge_433, remote_id: "${dooya_remote_id}", channel: "${dooya_channel_all}", button: 5}
+      - script.execute: {id: dooya_sync, channel: "${dooya_channel_all}", button: 5}

@@ -1,0 +1,9 @@
+# Optional Home Assistant native API.
+#
+# Exposes the same entities (captures, transmit buttons, blinds) to Home Assistant.
+# Logging is unchanged: logs are produced and kept on the device; Home Assistant only sees
+# them if you explicitly open the ESPHome log viewer.
+
+api:
+  encryption:
+    key: !secret encryption_key  # shared with OTA (packages/device.yaml)

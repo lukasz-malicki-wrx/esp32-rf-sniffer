@@ -1,0 +1,91 @@
+# CC1101 #1 on 433 MHz (OOK): blinds, sockets, gates, weather stations...
+#
+# The CC1101 runs in asynchronous serial mode: GDO2 outputs the demodulated signal to
+# remote_receiver, GDO0 keys the carrier from remote_transmitter. The chip is half-duplex,
+# so the transmitter switches it to TX for the duration of each frame and back to RX after.
+
+esphome:
+  on_boot:
+    - priority: -100
+      then:
+        - cc1101.begin_rx: cc1101_433
+
+cc1101:
+  - id: cc1101_433
+    cs_pin: ${cc1101_433_cs_pin}
+    frequency: ${cc1101_433_frequency}
+    modulation_type: ASK/OOK
+    filter_bandwidth: 200kHz
+
+remote_receiver:
+  - id: rx_433
+    pin: ${cc1101_433_gdo2_pin}
+    tolerance: 50%
+    filter: 100us
+    idle: 8ms
+    buffer_size: 8kB
+    # RMT budget on the classic ESP32: 512 symbols = 2 x RX 192 + 2 x TX 64.
+    rmt_symbols: 192
+    # Decoding and logging is done by rf_bridge, no dumpers needed.
+    dump: []
+
+remote_transmitter:
+  - id: tx_433
+    pin: ${cc1101_433_gdo0_pin}
+    carrier_duty_percent: 100%
+    rmt_symbols: 64
+    # Blocking on purpose: rf_bridge measures the inter-frame gap from the real end of
+    # the transmission.
+    non_blocking: false
+    on_transmit:
+      then:
+        - cc1101.begin_tx: cc1101_433
+    on_complete:
+      then:
+        - cc1101.begin_rx: cc1101_433
+
+rf_bridge:
+  - id: bridge_433
+    band: "433"
+    receiver_id: rx_433
+    transmitter_id: tx_433
+    queue_size: 20
+    frame_gap: 100ms  # quiet time between commands, so receivers see separate bursts
+    dedup_window: 1500ms  # one button press = several bursts, report it once
+    history_size: 8
+    # ETSI EN 300 220 allows 10 % in 433.05-434.79 MHz; real usage is far below.
+    duty_cycle: 10%
+
+select:
+  - platform: rf_bridge
+    rf_bridge_id: bridge_433
+    capture_slot:
+      name: 433 capture slot
+
+text_sensor:
+  - platform: rf_bridge
+    rf_bridge_id: bridge_433
+    last_frame:
+      name: 433 last frame
+    selected_capture:
+      name: 433 selected capture
+
+button:
+  - platform: rf_bridge
+    rf_bridge_id: bridge_433
+    transmit_selected:
+      name: 433 transmit selected
+    transmit_last:
+      name: 433 transmit last
+    clear_captures:
+      name: 433 clear captures
+
+sensor:
+  - platform: rf_bridge
+    rf_bridge_id: bridge_433
+    queue_depth:
+      name: 433 TX queue
+    frames_received:
+      name: 433 frames received
+    duty_cycle_used:
+      name: 433 duty cycle used

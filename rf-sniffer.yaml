@@ -1,0 +1,50 @@
+# ESP32 RF sniffer / bridge - two CC1101 radios (433 MHz + 868 MHz).
+#
+# Standalone by design: decoding, logs and the transmit UI live on the device
+# (serial console + built-in web server). Home Assistant is optional, see packages/.
+#
+# Wiring: docs/wiring.md
+
+substitutions:
+  name: rf-sniffer
+  friendly_name: RF Sniffer
+
+  # Shared SPI bus (both CC1101 modules)
+  spi_clk_pin: GPIO18
+  spi_miso_pin: GPIO5
+  spi_mosi_pin: GPIO22
+
+  # CC1101 #1 - 433 MHz
+  cc1101_433_cs_pin: GPIO19
+  cc1101_433_gdo0_pin: GPIO21  # TX data (module pin 3)
+  cc1101_433_gdo2_pin: GPIO23  # RX data (module pin 8)
+  cc1101_433_frequency: 433.92MHz
+
+  # CC1101 #2 - 868 MHz
+  cc1101_868_cs_pin: GPIO27
+  cc1101_868_gdo0_pin: GPIO26  # TX data (module pin 3)
+  cc1101_868_gdo2_pin: GPIO25  # RX data (module pin 8)
+  cc1101_868_frequency: 868.35MHz
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2026.10.0
+
+esp32:
+  board: esp32dev
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [rf_bridge]
+
+packages:
+  device: !include packages/device.yaml
+  radio_433: !include packages/radio-433.yaml
+  radio_868: !include packages/radio-868.yaml
+
+  # Optional - uncomment what you need:
+  # dooya_blinds: !include packages/dooya-blinds.yaml   # time-based covers for Dooya motors
+  # home_assistant: !include packages/home-assistant.yaml  # native API (logs stay on the device)

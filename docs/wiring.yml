@@ -1,0 +1,62 @@
+# Wiring harness - source of docs/images/wiring.svg.
+# Render with: scripts/render-wiring.sh   (WireViz + Graphviz in a container)
+#
+# Both CC1101 modules share the SPI bus (SCK / MOSI / MISO); each one has its own
+# chip-select and its own data lines: GDO0 = TX data in, GDO2 = RX data out.
+# Wire colours are the same on both harnesses, so one look tells the signal.
+
+metadata:
+  title: ESP32 RF Sniffer - CC1101 433 MHz + 868 MHz
+
+options:
+  fontname: Helvetica
+  bgcolor: WH
+  color_mode: SHORT
+
+connectors:
+  ESP32:
+    type: ESP32 DevKit
+    subtype: header pins
+    pins: [3V3, GND, GPIO18, GPIO22, GPIO5, GPIO19, GPIO21, GPIO23, GPIO27, GPIO26, GPIO25]
+    pinlabels: [3.3 V, GND, SPI SCK, SPI MOSI, SPI MISO, CS 433, TX 433, RX 433, CS 868, TX 868, RX 868]
+    notes: "GPIO5 is a strapping pin: safe as MISO, SO stays tri-stated while CS is high"
+
+  CC1101_433:
+    type: CC1101 module
+    subtype: 433 MHz version
+    pinlabels: [GND, VCC, GDO0, CSN, SCK, MOSI, MISO, GDO2]
+    notes: 3.3 V only - 10 µF + 100 nF at VCC · λ/4 antenna 17.3 cm
+
+  CC1101_868:
+    type: CC1101 module
+    subtype: 868 MHz version
+    pinlabels: [GND, VCC, GDO0, CSN, SCK, MOSI, MISO, GDO2]
+    notes: 3.3 V only - 10 µF + 100 nF at VCC · λ/4 antenna 8.6 cm
+
+cables:
+  W433:
+    category: bundle
+    wirecount: 8
+    gauge: 0.14 mm2
+    length: 0.15
+    colors: [BK, RD, OG, WH, YE, BU, GN, VT]
+    wirelabels: [GND, 3V3, TX data, CS, SCK, MOSI, MISO, RX data]
+    notes: Dupont jumpers, keep short
+
+  W868:
+    category: bundle
+    wirecount: 8
+    gauge: 0.14 mm2
+    length: 0.15
+    colors: [BK, RD, OG, WH, YE, BU, GN, VT]
+    wirelabels: [GND, 3V3, TX data, CS, SCK, MOSI, MISO, RX data]
+    notes: Dupont jumpers, keep short
+
+connections:
+  - - ESP32: [GND, 3V3, GPIO21, GPIO19, GPIO18, GPIO22, GPIO5, GPIO23]
+    - W433: [1-8]
+    - CC1101_433: [1-8]
+
+  - - ESP32: [GND, 3V3, GPIO26, GPIO27, GPIO18, GPIO22, GPIO5, GPIO25]
+    - W868: [1-8]
+    - CC1101_868: [1-8]

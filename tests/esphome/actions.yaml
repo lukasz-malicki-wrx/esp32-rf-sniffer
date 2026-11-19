@@ -1,0 +1,49 @@
+# CI-only package: exercises every rf_bridge action and trigger so a schema or codegen
+# regression fails the firmware build. Included by the "full" CI variant only.
+
+rf_bridge:
+  - id: !extend bridge_868
+    on_frame:
+      - lambda: |-
+          char label[64];
+          x.describe(label, sizeof(label));
+          ESP_LOGD("ci", "%s frame: %s", rf_bridge::protocol_name(x.protocol), label);
+    on_dooya:
+      - logger.log:
+          format: "Dooya %06X ch %02X button %u"
+          args: ["(unsigned) x.id", "(unsigned) x.channel", "(unsigned) x.button"]
+
+button:
+  - platform: template
+    name: CI transmit Dooya
+    internal: true
+    on_press:
+      - rf_bridge.transmit_dooya:
+          id: bridge_433
+          remote_id: 0x123456
+          channel: 0x21
+          button: 5
+          times: 3
+          wait_time: 10ms
+      - rf_bridge.transmit_dooya:
+          id: bridge_433
+          remote_id: !lambda return 0x123456;
+          channel: !lambda return 0x22;
+          button: !lambda return 1;
+          check: 1
+  - platform: template
+    name: CI transmit RC-Switch
+    internal: true
+    on_press:
+      - rf_bridge.transmit_rc_switch: {id: bridge_433, protocol: 1, code: 0x5A5A5A, nbits: 24}
+      - rf_bridge.transmit_rc_switch: {id: bridge_868, protocol: 2, code: 0xABC, nbits: 12, times: 4}
+  - platform: template
+    name: CI replay
+    internal: true
+    on_press:
+      - rf_bridge.transmit_capture: bridge_868
+      - rf_bridge.transmit_capture: {id: bridge_433, slot: 3}
+      - rf_bridge.clear_captures: bridge_433
+      - lambda: |-
+          id(bridge_868).transmit_raw({400, -1200, 400, -1200, 1200, -400});
+          ESP_LOGD("ci", "pending: %u", (unsigned) id(bridge_868).pending_transmissions());

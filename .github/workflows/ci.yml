@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install ruff yamllint clang-format -c requirements-dev.txt
+      - name: ruff
+        run: |
+          ruff check components
+          ruff format --check components
+      - name: clang-format
+        run: clang-format --dry-run --Werror components/rf_bridge/*.h components/rf_bridge/*.cpp tests/*.cpp
+      - name: yamllint
+        run: yamllint --strict .
+
+  wiring:
+    name: Wiring diagram
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: sudo apt-get update && sudo apt-get install -y graphviz
+      - run: pip install wireviz -c requirements-dev.txt
+      - name: Render
+        run: wireviz --format s --output-dir "$RUNNER_TEMP" docs/wiring.yml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wiring-diagram
+          path: ${{ runner.temp }}/wiring.svg
+
+  unit-tests:
+    name: Unit tests (host, ASan + UBSan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - name: Configure
+        run: cmake -S tests -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+      - name: Build
+        run: cmake --build build
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  firmware:
+    name: Firmware (${{ matrix.variant }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [base, full]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install esphome -c requirements-dev.txt
+      - name: Prepare config
+        run: |
+          cp secrets.example.yaml secrets.yaml
+          if [ "${{ matrix.variant }}" = "full" ]; then
+            # Enable every optional package so all of them are compiled.
+            sed -E 's/^  # (dooya_blinds|home_assistant):/  \1:/' rf-sniffer.yaml > rf-sniffer-full.yaml
+            # ...plus a package that uses every rf_bridge action and trigger.
+            echo "  ci_actions: !include tests/esphome/actions.yaml" >> rf-sniffer-full.yaml
+            echo "CONFIG=rf-sniffer-full.yaml" >> "$GITHUB_ENV"
+          else
+            echo "CONFIG=rf-sniffer.yaml" >> "$GITHUB_ENV"
+          fi
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/esphome
+          key: >-
+            esphome-${{ hashFiles('requirements-dev.txt') }}-${{ matrix.variant }}-
+            ${{ hashFiles('rf-sniffer.yaml', 'packages/**', 'components/**') }}
+          restore-keys: esphome-${{ hashFiles('requirements-dev.txt') }}-
+      - name: Validate
+        run: esphome config "$CONFIG"
+      - name: Compile
+        run: esphome compile "$CONFIG"

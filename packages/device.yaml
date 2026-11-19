@@ -1,0 +1,71 @@
+# Board, connectivity, logging and diagnostics. Nothing RF-specific lives here.
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # Fallback hotspot when the configured network is unreachable.
+  ap:
+    ssid: ${friendly_name} Fallback
+    password: !secret ap_password
+
+captive_portal:
+
+ota:
+  - platform: esphome
+    # Noise-encrypted, authenticated uploads (cheaper and safer than an OTA password).
+    # The same key secures the optional Home Assistant API.
+    encryption:
+      key: !secret encryption_key
+
+# All logs stay on the device: serial console and the web server's log view.
+# Raw pulse trains of unknown frames are printed at DEBUG level.
+logger:
+  level: DEBUG
+  logs:
+    # Entity state chatter would drown the RF log.
+    sensor: INFO
+    text_sensor: INFO
+    select: INFO
+    button: INFO
+    remote_receiver: INFO
+
+web_server:
+  port: 80
+  version: 3
+  local: true  # serve the UI from flash - works without internet access
+  log: true
+  ota: false  # firmware only via the encrypted OTA above, never via plaintext HTTP
+  auth:
+    type: digest
+    username: !secret web_username
+    password: !secret web_password
+
+spi:
+  clk_pin: ${spi_clk_pin}
+  miso_pin:
+    number: ${spi_miso_pin}
+    # GPIO5 is a strapping pin, but it is safe as MISO: both CC1101s keep SO tri-stated
+    # while their CS is high, so nothing drives the pin during reset.
+    ignore_strapping_warning: true
+  mosi_pin: ${spi_mosi_pin}
+
+sensor:
+  - platform: uptime
+    name: Uptime
+    entity_category: diagnostic
+  - platform: wifi_signal
+    name: Wi-Fi signal
+    update_interval: 60s
+    entity_category: diagnostic
+
+text_sensor:
+  - platform: version
+    name: ESPHome version
+    hide_timestamp: true
+  - platform: wifi_info
+    ip_address:
+      name: IP address
+
+button:
+  - platform: restart
+    name: Restart
