@@ -50,7 +50,7 @@ jobs:
           for source in docs/wiring-*.yml; do
             wireviz --format s --output-dir "$RUNNER_TEMP/wiring" "$source"
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: wiring-diagrams
           path: ${{ runner.temp }}/wiring/*.svg
